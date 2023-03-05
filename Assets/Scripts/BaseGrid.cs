@@ -30,7 +30,7 @@ public class BaseGrid : Singleton<BaseGrid>
             for (int y = 0; y < 10; y++)
             {
                 var tile = (MyTile)_manager.GetTile(new Vector2Int(column, y));
-                if (tile.OnMyTile) Destroy(tile.OnMyTile.gameObject);
+                if (tile.OnMyTile) tile.OnMyTile.Destroy(y * .05f);
             }
         }
     }
@@ -53,7 +53,7 @@ public class BaseGrid : Singleton<BaseGrid>
             for (int x = 0; x < 10; x++)
             {
                 var tile = (MyTile)_manager.GetTile(new Vector2Int(x, rowIndex));
-                if (tile.OnMyTile) Destroy(tile.OnMyTile.gameObject);
+                if (tile.OnMyTile) tile.OnMyTile.Destroy(x * .05f);
             }
         }
     }

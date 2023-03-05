@@ -1,4 +1,4 @@
-using MyGrid.Code;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -9,7 +9,6 @@ public class Movable : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointe
 
     private Transform _currentMovable;
     private Vector3 _homePosition;
-    private GridManager _manager;
     private MyTile _myTile;
     private Piece _piece;
 
@@ -17,7 +16,6 @@ public class Movable : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointe
     {
         _currentMovable = transform.parent;
         _homePosition = transform.position;
-        _manager = transform.parent.GetComponent<GridManager>();
         _myTile = GetComponent<MyTile>();
         _piece = transform.parent.GetComponent<Piece>();
     }
@@ -26,11 +24,22 @@ public class Movable : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointe
 
     public void OnPointerDown(PointerEventData eventData)
     {
+        _piece.OnPointerDown();
+        SetOffset(eventData);
+    }
+
+    private void SetOffset(PointerEventData eventData)
+    {
         var target = Camera.main.ScreenToWorldPoint(eventData.position);
         _offset = _currentMovable.position - target;
     }
 
     public void OnDrag(PointerEventData eventData)
+    {
+        Move(eventData);
+    }
+
+    private void Move(PointerEventData eventData)
     {
         var target = Camera.main.ScreenToWorldPoint(eventData.position);
         target += _offset;
@@ -40,104 +49,49 @@ public class Movable : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointe
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        var allowSetToGrid = AllowSetToGrid();
-
-        if (allowSetToGrid)
-        {
-            SetPositionAll();
-
-            _piece.OnSetToGrid();
-            Spawner.Instance.Check();
-
-            BaseGrid.Instance.CheckGrid();
-        }
-        else
-        {
-            BackHomeAll();
-        }
-    }
-
-    #endregion
-
-    #region Manager
-
-    private bool AllowSetToGrid()
-    {
-        var allowSetToGrid = true;
-        foreach (var tile in _manager.Tiles)
-        {
-            if (!tile.gameObject.activeSelf) continue;
-
-            var myTile = (MyTile)tile;
-            var hit = myTile.Movable.Hit();
-            if (!hit)
-            {
-                allowSetToGrid = false;
-                break;
-            }
-
-            //OnMyTile
-            var baseTile = hit.transform.GetComponent<MyTile>();
-            if (baseTile.OnMyTile)
-            {
-                allowSetToGrid = false;
-                break;
-            }
-        }
-
-        return allowSetToGrid;
-    }
-
-    private void SetPositionAll()
-    {
-        foreach (var tile in _manager.Tiles)
-        {
-            if (!tile.gameObject.activeSelf) continue;
-            var myTile = (MyTile)tile;
-            myTile.Movable.SetPositionToHit();
-        }
-    }
-
-    private void BackHomeAll()
-    {
-        foreach (var tile in _manager.Tiles)
-        {
-            if (!tile.gameObject.activeSelf) continue;
-            var myTile = (MyTile)tile;
-            myTile.Movable.BackHome();
-        }
+        _piece.OnPointerUp();
     }
 
     #endregion
 
 
-    private void SetPositionToHit()
+    public void SetPositionToHit()
     {
         var hit = Hit();
         var baseTile = hit.transform.GetComponent<MyTile>();
         baseTile.OnMyTile = _myTile;
         var target = hit.transform.position;
         target.z = 0.5f;
-        transform.position = target;
         _myTile.SetActiveCollider(false);
+
+        // transform.position = target;
+        Animation(target, .3f);
     }
 
-    private void BackHome()
+    public void BackHome()
     {
-        transform.position = _homePosition;
+        // transform.position = _homePosition;
+        Animation(_homePosition, .3f);
     }
 
-    private RaycastHit2D Hit()
+    public RaycastHit2D Hit()
     {
         var origin = transform.position;
         return Physics2D.Raycast(origin, Vector3.forward, 10, mask);
     }
 
-    // private void FixedUpdate()
-    // {
-    //     var hit = Hit();
-    //     Debug.Log(hit ? $"hit {hit.transform.name}" : "no hit");
-    //     Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * 10,
-    //         hit ? Color.yellow : Color.white);
-    // }
+    private async void Animation(Vector3 target, float duration)
+    {
+        var init = transform.position;
+        var passed = 0f;
+        while (passed < duration)
+        {
+            passed += Time.deltaTime;
+            var normalize = passed / duration;
+            var current = Vector3.Lerp(init, target, normalize);
+            transform.position = current;
+            await Task.Yield();
+        }
+    }
+    
 }
